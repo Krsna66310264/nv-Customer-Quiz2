@@ -1,12 +1,12 @@
 <template>
   <div class="container">
     <h1>Edit Blog</h1>
-    <form v-on:submit.prevent = "editBlog">
+    <form v-on:submit.prevent="editBlog">
       <div class="mb-3">
         <label class="form-label">Title:</label>
         <input type="text" v-model="blog.title" class="form-control" placeholder="Enter blog title">
       </div>
-      
+
       <div class="mb-3">
         <label class="form-label">Upload Images:</label>
         <upload-image @uploaded="onUploaded"></upload-image>
@@ -15,7 +15,7 @@
       <div class="mb-3">
         <label class="form-label">Thumbnail:</label>
         <transition name="fade">
-          <div class="thumbnail-pic" v-if="blog.thumbnail != 'null'">
+          <div class="thumbnail-pic" v-if="blog.thumbnail && blog.thumbnail !== 'null' && blog.thumbnail !== 'NA'">
             <img :src="BASE_URL + blog.thumbnail" alt="thumbnail">
           </div>
         </transition>
@@ -28,7 +28,8 @@
               <img :src="BASE_URL + picture.name" alt="picture image">
             </div>
             <div class="btn-wrapper">
-              <button class="btn btn-sm btn-info me-1" v-on:click.prevent="useThumbnail(picture.name)">Thumbnail</button>
+              <button class="btn btn-sm btn-info me-1"
+                v-on:click.prevent="useThumbnail(picture.name)">Thumbnail</button>
               <button class="btn btn-sm btn-danger" v-on:click.prevent="delFile(picture)">Delete</button>
             </div>
           </li>
@@ -45,7 +46,7 @@
         <label class="form-label">Category:</label>
         <input type="text" v-model="blog.category" class="form-control">
       </div>
-      
+
       <div class="mb-3">
         <label class="form-label">Status:</label>
         <input type="text" v-model="blog.status" class="form-control">
@@ -91,7 +92,7 @@ export default {
   },
   methods: {
     // เมื่ออัปโหลดเสร็จ Component ลูกจะส่งข้อมูลไฟล์มา
-    onUploaded (fileData) {
+    onUploaded(fileData) {
       this.pictureIndex++
       const pictureJSON = {
         id: this.pictureIndex,
@@ -99,10 +100,10 @@ export default {
       }
       this.pictures.push(pictureJSON)
     },
-    useThumbnail (filename) {
+    useThumbnail(filename) {
       this.blog.thumbnail = filename
     },
-    async delFile (picture) {
+    async delFile(picture) {
       let result = confirm("Want to delete?")
       if (result) {
         try {
@@ -114,7 +115,7 @@ export default {
         }
       }
     },
-    async editBlog () {
+    async editBlog() {
       // แปลง Array Pictures เป็น JSON String ก่อนบันทึก
       this.blog.pictures = JSON.stringify(this.pictures)
       try {
@@ -126,21 +127,30 @@ export default {
         console.log(err)
       }
     },
-    navigateTo (route) {
+    navigateTo(route) {
       this.$router.push(route)
     }
   },
-  async created () {
+  async created() {
     try {
-      let blogId = this.$route.params.blogId // รับค่าพารามิเตอร์จาก URL [5]
+      let blogId = this.$route.params.blogId
       this.blog = (await BlogsService.show(blogId)).data
-      // แปลง JSON String เป็น Array Pictures เพิ่อแสดงบนหน้าจอ
-      this.blog.pictures = JSON.parse(this.blog.pictures)
+      // โหลดรูปเก่าจาก DB เข้า pictures array เพื่อแสดงผลและป้องกันรูปหายตอน save
+      try {
+        const loaded = JSON.parse(this.blog.pictures)
+        if (Array.isArray(loaded)) {
+          this.pictures = loaded
+          this.pictureIndex = loaded.length
+        }
+      } catch {
+        this.pictures = []
+      }
+      // reset blog.pictures กลับเป็น string เดิม (จะ stringify ใหม่ตอน save)
+      // ไม่ต้องแปลง blog.pictures เป็น Array เพราะ editBlog() จะ stringify this.pictures แทน
     } catch (error) {
       console.log(error)
     }
   }
 }
 </script>
-<style scoped>
-</style>
+<style scoped></style>
